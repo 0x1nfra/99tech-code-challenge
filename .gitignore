@@ -1,0 +1,76 @@
+# --------------------
+# Dependencies
+# --------------------
+node_modules/
+.pnpm-store/
+.yarn/
+.yarn-cache/
+.yarn-unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# --------------------
+# Build outputs
+# --------------------
+dist/
+build/
+out/
+coverage/
+
+# --------------------
+# TypeScript
+# --------------------
+*.tsbuildinfo
+
+# --------------------
+# Environment variables
+# --------------------
+.env
+.env.*
+!.env.example
+
+# --------------------
+# Logs
+# --------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --------------------
+# OS / Editor
+# --------------------
+.DS_Store
+Thumbs.db
+.vscode/
+!.vscode/extensions.json
+.idea/
+
+# --------------------
+# Testing
+# --------------------
+jest-cache/
+playwright-report/
+test-results/
+
+# --------------------
+# Runtime files
+# --------------------
+*.pid
+*.seed
+*.pid.lock
+
+# --------------------
+# Docker
+# --------------------
+docker-data/
+*.local
+
+# --------------------
+# Misc
+# --------------------
+.cache/
+.tmp/
+temp/
