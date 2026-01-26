@@ -2,13 +2,13 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 //FIXME: move validators to routes instead
 import {
-  createMovieSchema,
   updateMovieSchema,
   movieFilterSchema,
 } from "../validation/movie.validations";
 import { date, ZodError } from "zod";
 import MovieService from "../services/movie.services";
 import { ServiceResponseStatus } from "../services/types";
+import ApiError from "../lib/errorTypes/ApiError";
 
 const prisma = new PrismaClient();
 
@@ -19,29 +19,43 @@ export const createMovie = async (
   try {
     const response = await new MovieService().createMovie(req.body);
 
-    if (response.status === ServiceResponseStatus.Error) {
-      res.status(500).json({ error: response.message });
-      return;
-    }
-
     res.status(response.status).json({
       message: response.message,
       data: response.data,
     });
   } catch (error) {
+    if (error instanceof ApiError) {
+      res.status(error.httpCode).json({
+        code: error.errorCode,
+        error: error.errorMessage,
+      });
+      return;
+    }
+
     if (error instanceof ZodError) {
       res
         .status(400)
         .json({ error: "Validation error", details: error.errors });
       return;
     }
-    res.status(500).json({ error });
+
+    res.status(500).json({ error: "Failed to create movie" });
   }
 };
 
 export const getMovies = async (req: Request, res: Response): Promise<void> => {
   try {
-    const filters = movieFilterSchema.parse(req.query);
+    // Convert query parameters to strings if they're arrays to satisfy Zod schema
+    const query: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.query)) {
+      if (Array.isArray(value)) {
+        query[key] = value[0];
+      } else if (typeof value === "string") {
+        query[key] = value;
+      }
+    }
+
+    const filters = movieFilterSchema.parse(query);
     const response = await new MovieService().getMovies(filters);
 
     if (response.status === ServiceResponseStatus.Error) {
@@ -129,20 +143,24 @@ export const deleteMovie = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     if (isNaN(id)) {
       res.status(400).json({ error: "Invalid movie ID" });
       return;
     }
 
-    await prisma.movie.delete({
-      where: { id },
-    });
+    const response = await new MovieService().deleteMovie(id);
 
-    res.status(204).send();
+    res.status(response.status).json({
+      message: response.message,
+      data: response.data,
+    });
   } catch (error) {
-    if ((error as any).code === "P2025") {
-      res.status(404).json({ error: "Movie not found" });
+    if (error instanceof ApiError) {
+      res.status(error.httpCode).json({
+        code: error.errorCode,
+        error: error.errorMessage,
+      });
       return;
     }
     res.status(500).json({ error: "Failed to delete movie" });

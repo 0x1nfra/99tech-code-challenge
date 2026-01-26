@@ -5,5 +5,7 @@ export enum IErrorEnums {
   UnknownError = 9999,
 
   //Movie errors
-  DuplicateMovieExists = 10001,
+  DuplicateMovieExists = 1001,
+  MovieNotFound = 1002,
+  DatabaseError = 1003,
 }
