@@ -117,31 +117,32 @@ export const updateMovie = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     if (isNaN(id)) {
       res.status(400).json({ error: "Invalid movie ID" });
       return;
     }
 
     const validatedData = updateMovieSchema.parse(req.body);
+    const response = await new MovieService().updateMovie(id, validatedData);
 
-    const movie = await prisma.movie.update({
-      where: { id },
-      data: validatedData,
-    });
-
-    res.json(movie);
+    res.json(response.data);
   } catch (error) {
+    if (error instanceof ApiError) {
+      res.status(error.httpCode).json({
+        code: error.errorCode,
+        error: error.errorMessage,
+      });
+      return;
+    }
+
     if (error instanceof ZodError) {
       res
         .status(400)
         .json({ error: "Validation error", details: error.errors });
       return;
     }
-    if ((error as any).code === "P2025") {
-      res.status(404).json({ error: "Movie not found" });
-      return;
-    }
+
     res.status(500).json({ error: "Failed to update movie" });
   }
 };

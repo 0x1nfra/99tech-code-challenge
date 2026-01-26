@@ -156,6 +156,90 @@ export default class MovieService {
     }
   }
 
+  async updateMovie(
+    id: number,
+    data: Partial<Omit<Movie, "id" | "createdAt" | "updatedAt">>,
+  ): ServiceResponse<Movie> {
+    try {
+      // Check if movie exists
+      const existingMovie = await prisma.movie.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+
+      if (!existingMovie) {
+        throw new ApiError(
+          IErrorEnums.MovieNotFound,
+          "Movie not found",
+          status.NOT_FOUND,
+        );
+      }
+
+      // Check for duplicate title if title is being updated
+      if (data.title) {
+        const duplicateMovie = await prisma.movie.findFirst({
+          where: {
+            title: {
+              equals: data.title,
+            },
+            NOT: {
+              id: id, // Exclude current movie from duplicate check
+            },
+          },
+          select: { id: true },
+        });
+
+        if (duplicateMovie) {
+          throw new ApiError(
+            IErrorEnums.DuplicateMovieExists,
+            "A movie with this title already exists",
+            status.CONFLICT,
+          );
+        }
+      }
+
+      const movie = await prisma.movie.update({
+        where: { id },
+        data,
+      });
+
+      return {
+        status: ServiceResponseStatus.Success,
+        message: "Movie updated successfully",
+        data: movie,
+      };
+    } catch (error) {
+      // Re-throw ApiError instances
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      // Handle Prisma errors
+      if ((error as any).code === "P2025") {
+        throw new ApiError(
+          IErrorEnums.MovieNotFound,
+          "Movie not found",
+          status.NOT_FOUND,
+        );
+      }
+
+      if ((error as any).code === "P2002") {
+        throw new ApiError(
+          IErrorEnums.DuplicateMovieExists,
+          "A movie with this title already exists",
+          status.CONFLICT,
+        );
+      }
+
+      // Handle unexpected errors
+      throw new ApiError(
+        IErrorEnums.DatabaseError,
+        `Failed to update movie: ${(error as Error).message}`,
+        status.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   async deleteMovie(id: number): ServiceResponse<null> {
     try {
       // Check if movie exists first to provide clearer error message
