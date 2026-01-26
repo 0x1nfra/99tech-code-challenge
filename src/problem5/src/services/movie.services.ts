@@ -122,6 +122,40 @@ export default class MovieService {
     }
   }
 
+  async getMovieById(id: number): ServiceResponse<Movie> {
+    try {
+      const movie = await prisma.movie.findUnique({
+        where: { id },
+      });
+
+      if (!movie) {
+        throw new ApiError(
+          IErrorEnums.MovieNotFound,
+          "Movie not found",
+          status.NOT_FOUND,
+        );
+      }
+
+      return {
+        status: ServiceResponseStatus.Success,
+        message: "Movie retrieved successfully",
+        data: movie,
+      };
+    } catch (error) {
+      // Re-throw ApiError instances
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      // Handle unexpected errors
+      throw new ApiError(
+        IErrorEnums.DatabaseError,
+        `Failed to fetch movie: ${(error as Error).message}`,
+        status.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   async deleteMovie(id: number): ServiceResponse<null> {
     try {
       // Check if movie exists first to provide clearer error message

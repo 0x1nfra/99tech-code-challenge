@@ -83,24 +83,32 @@ export const getMovieById = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     if (isNaN(id)) {
       res.status(400).json({ error: "Invalid movie ID" });
       return;
     }
 
-    const movie = await prisma.movie.findUnique({
-      where: { id },
-    });
+    const response = await new MovieService().getMovieById(id);
 
-    if (!movie) {
-      res.status(404).json({ error: "Movie not found" });
+    res.json(response.data);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      res.status(error.httpCode).json({
+        code: error.errorCode,
+        error: error.errorMessage,
+      });
       return;
     }
 
-    res.json(movie);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch movie" });
+    if (error instanceof ZodError) {
+      res
+        .status(400)
+        .json({ error: "Validation error", details: error.errors });
+      return;
+    }
+
+    res.status(500).json({ error: "Failed to fetch specific movie" });
   }
 };
 
