@@ -45,6 +45,12 @@ export const movieFilterSchema = z.object({
     .optional(),
 });
 
+// Param validation schema
+export const movieIdParamSchema = z.object({
+  id: z.string().transform(Number).pipe(z.number().int().positive()),
+});
+
 export type CreateMovieInput = z.infer<typeof createMovieSchema>;
 export type UpdateMovieInput = z.infer<typeof updateMovieSchema>;
 export type MovieFilterInput = z.infer<typeof movieFilterSchema>;
+export type MovieIdParam = z.infer<typeof movieIdParamSchema>;

@@ -1,11 +1,6 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
-//FIXME: move validators to routes instead
-import {
-  updateMovieSchema,
-  movieFilterSchema,
-} from "../validation/movie.validations";
-import { date, ZodError } from "zod";
+import { ZodError } from "zod";
 import MovieService from "../services/movie.services";
 import { ServiceResponseStatus } from "../services/types";
 import ApiError from "../lib/errorTypes/ApiError";
@@ -55,8 +50,7 @@ export const getMovies = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    const filters = movieFilterSchema.parse(query);
-    const response = await new MovieService().getMovies(filters);
+    const response = await new MovieService().getMovies(query);
 
     if (response.status === ServiceResponseStatus.Error) {
       res.status(500).json({ error: response.message });
@@ -123,8 +117,7 @@ export const updateMovie = async (
       return;
     }
 
-    const validatedData = updateMovieSchema.parse(req.body);
-    const response = await new MovieService().updateMovie(id, validatedData);
+    const response = await new MovieService().updateMovie(id, req.body);
 
     res.json(response.data);
   } catch (error) {
