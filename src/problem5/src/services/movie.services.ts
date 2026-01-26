@@ -4,12 +4,14 @@ import {
   ServiceResponseError,
   ServiceResponseStatus,
 } from "./types";
-import { Movie } from "../types/movies";
+import { GetMoviesFilters, GetMoviesResponse, Movie } from "../types/movies";
 
 const prisma = new PrismaClient();
 
 export default class MovieService {
-  async createMovie(data: Movie): ServiceResponse<Movie> {
+  async createMovie(
+    data: Omit<Movie, "id" | "createdAt" | "updatedAt">,
+  ): ServiceResponse<Movie> {
     // TODO: add checking for duplicate titles
     const movie = await prisma.movie.create({
       data,
@@ -19,5 +21,66 @@ export default class MovieService {
       message: "Movie created successfully",
       data: movie,
     };
+  }
+
+  async getMovies(
+    filters: GetMoviesFilters = {},
+  ): ServiceResponse<GetMoviesResponse> {
+    try {
+      const page = filters.page || 1;
+      const limit = filters.limit || 10;
+      const skip = (page - 1) * limit;
+
+      const where: any = {};
+
+      if (filters.genre) {
+        where.genre = { contains: filters.genre };
+      }
+      if (filters.director) {
+        where.director = { contains: filters.director };
+      }
+      if (filters.minYear !== undefined || filters.maxYear !== undefined) {
+        where.releaseYear = {};
+        if (filters.minYear !== undefined)
+          where.releaseYear.gte = filters.minYear;
+        if (filters.maxYear !== undefined)
+          where.releaseYear.lte = filters.maxYear;
+      }
+      if (filters.minRating !== undefined) {
+        where.rating = { gte: filters.minRating };
+      }
+
+      const [movies, total] = await Promise.all([
+        prisma.movie.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.movie.count({ where }),
+      ]);
+
+      return {
+        status: ServiceResponseStatus.Success,
+        message: "Movies retrieved successfully",
+        data: {
+          data: movies,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
+        },
+      };
+    } catch (error) {
+      return {
+        status: ServiceResponseStatus.Error,
+        message: "Failed to fetch movies",
+        data: {
+          error: `Database error: ${(error as Error).message}`,
+        },
+      };
+    }
   }
 }

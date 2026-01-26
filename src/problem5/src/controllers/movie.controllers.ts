@@ -8,6 +8,7 @@ import {
 } from "../validation/movie.validations";
 import { date, ZodError } from "zod";
 import MovieService from "../services/movie.services";
+import { ServiceResponseStatus } from "../services/types";
 
 const prisma = new PrismaClient();
 
@@ -17,6 +18,11 @@ export const createMovie = async (
 ): Promise<void> => {
   try {
     const response = await new MovieService().createMovie(req.body);
+
+    if (response.status === ServiceResponseStatus.Error) {
+      res.status(500).json({ error: response.message });
+      return;
+    }
 
     res.status(response.status).json({
       message: response.message,
@@ -36,45 +42,16 @@ export const createMovie = async (
 export const getMovies = async (req: Request, res: Response): Promise<void> => {
   try {
     const filters = movieFilterSchema.parse(req.query);
-    const page = filters.page || 1;
-    const limit = filters.limit || 10;
-    const skip = (page - 1) * limit;
+    const response = await new MovieService().getMovies(filters);
 
-    const where: any = {};
-
-    if (filters.genre) {
-      where.genre = { contains: filters.genre, mode: "insensitive" };
+    if (response.status === ServiceResponseStatus.Error) {
+      res.status(500).json({ error: response.message });
+      return;
     }
-    if (filters.director) {
-      where.director = { contains: filters.director, mode: "insensitive" };
-    }
-    if (filters.minYear || filters.maxYear) {
-      where.releaseYear = {};
-      if (filters.minYear) where.releaseYear.gte = filters.minYear;
-      if (filters.maxYear) where.releaseYear.lte = filters.maxYear;
-    }
-    if (filters.minRating) {
-      where.rating = { gte: filters.minRating };
-    }
-
-    const [movies, total] = await Promise.all([
-      prisma.movie.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.movie.count({ where }),
-    ]);
 
     res.json({
-      data: movies,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      data: response.data.data,
+      pagination: response.data.pagination,
     });
   } catch (error) {
     if (error instanceof ZodError) {
