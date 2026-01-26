@@ -35,7 +35,7 @@ export const createMovie = async (
         .json({ error: "Validation error", details: error.errors });
       return;
     }
-    res.status(500).json({ error: `Failed to create movie: ${error}` });
+    res.status(500).json({ error });
   }
 };
 

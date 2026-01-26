@@ -5,6 +5,9 @@ import {
   ServiceResponseStatus,
 } from "./types";
 import { GetMoviesFilters, GetMoviesResponse, Movie } from "../types/movies";
+import ApiError from "../lib/errorTypes/ApiError";
+import { IErrorEnums } from "../entities/Error";
+import { status } from "http-status";
 
 const prisma = new PrismaClient();
 
@@ -12,10 +15,28 @@ export default class MovieService {
   async createMovie(
     data: Omit<Movie, "id" | "createdAt" | "updatedAt">,
   ): ServiceResponse<Movie> {
-    // TODO: add checking for duplicate titles
+    const allMovies = await prisma.movie.findMany({
+      select: {
+        title: true,
+      },
+    });
+
+    const duplicateExists = allMovies.some(
+      (movie: Movie) => movie.title.toLowerCase() === data.title.toLowerCase(),
+    );
+
+    if (duplicateExists) {
+      throw new ApiError(
+        IErrorEnums.DuplicateMovieExists,
+        "A movie with this title already exists",
+        status.INTERNAL_SERVER_ERROR,
+      );
+    }
+
     const movie = await prisma.movie.create({
       data,
     });
+
     return {
       status: ServiceResponseStatus.Success,
       message: "Movie created successfully",
